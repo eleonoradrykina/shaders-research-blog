@@ -1,8 +1,6 @@
 ---
 title: Shaders Research Blog
 ---
-@import "{{ site.theme }}";
-@import "{{ site.assets/css/style.css }}";
 
 
 # Hi! welcome to my Passion Project blog. 
@@ -11,4 +9,4 @@ title: Shaders Research Blog
 
 ### Check out blog posts:
 
-- [**Starting with mapping out resources to read**](./2025-01-06-start.md)
+- [### Starting with mapping out resources to read](./2025-01-06-start.md)
