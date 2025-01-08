@@ -5,9 +5,11 @@ pubDate: 'Jan 08 2025'
 heroImage: 'shader-2.png'
 ---
 
+#### Meeting
+
 Today started with the first coach meeting. Wouter suggested to start with [WebGPU Fundamentals](https://webgpufundamentals.org/webgpu/lessons/webgpu-how-it-works.html#toc), where I accidentally opened a lesson from the middle instead of the beginning.
 
-
+#### WebGPU Fundamentals && Tour of WGSL
 Seeing snippets of WGSL code I was quite lost, but then I saw [Tour of WGSL](https://google.github.io/tour-of-wgsl/).
 To understand the context better, I have decided to try out WGSL directly, so I went through the half of the tour and saved some memroy anchors to my figma conspect:
 ![WGSL Figma concept](/shaders-research-blog/images/conspect.png)
@@ -43,6 +45,15 @@ fn frag_main() -> @location(0) vec4f {
 On my way there I also got a bit distracted with a [reminder how multiplying matrices works](https://mathinsight.org/matrix_vector_multiplication#:~:text=Matrix%2Dvector%20product&text=If%20we%20let%20Ax,na21a22%E2%80%A6), I had a vague memory from high school but wanted to understand the outcome better.
 
 Then I re-read Fundamentals articles again and I feel how it starts to layer in my head.
+
+#### Three.js Shading Language
+
+While trying to understand how WebGPU works, I wanted to make sure to understand the **difference between WGSL and TSL.** After scanning documentation and examples, I wasn't quite sure I understood it correctly. 
+The examples on three js website do contain TSL already used with WebGPU, but not shaders written in WGSl. Lately when I need to summarise new things I learned I ask ChatGpt to explain me concepts as an example of pizzeria:
+![TSL-pizza](/shaders-research-blog/images/TSL-pizza.png)
+
+
+#### Planning
 For tomorrow I am planning to:
 - map out the roadmap;
 - start from [proper beginning of WebGPU Fundamentals](https://webgpufundamentals.org/webgpu/lessons/webgpu-fundamentals.html) again;
