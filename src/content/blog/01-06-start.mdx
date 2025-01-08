@@ -4,6 +4,7 @@ description: 'Lorem ipsum dolor sit amet'
 pubDate: 'Jan 06 2025'
 heroImage: 'blog-placeholder-3.jpg'
 ---
+import Takeaway from "../../components/Takeaway.astro";
 
 First things first: before starting this project, I have several links and tabs hanging open in my Google for weeks.
 Today I sorted them into more or less subtopics of my research resources:
@@ -33,3 +34,16 @@ Today I sorted them into more or less subtopics of my research resources:
 | Nodetoy   | https://nodetoy.co/|
 | Material X    | https://materialx.org/ |
 
+
+I started with reading Medium Article and watching Youtube video from @gianluca.lomarco about what Threejs Shading Language is (finally italian skills come in use!).
+To plan what I am going to do, I wanted to get a better understanding of what **TSL** is.
+Main takeaways are:
+<Takeaway header="Nodes">
+TSL facilitates shader development by breaking down the shaders into a series of nodes, each applying a specific effect. These nodes can be combined to generate the final shader.
+</Takeaway>
+
+<Takeaway header="WEBGL & WEBGPU">
+TSL will automatically handle the adaptation for the appropriate API, whether GLSL for WebGL or WGSL for WebGPU.
+</Takeaway>
+
+Next steps for me will be to get more comofrtable with writing shading langugaes and plan out the roadmap.

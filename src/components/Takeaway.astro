@@ -1,0 +1,23 @@
+---
+const { header } = Astro.props;
+---
+
+<div class="takeaway">
+  {header && <h4 class="header">{header}</h4>}
+  <slot />
+</div>
+<style>
+  .takeaway {
+    background-color: #c0c7ff;
+    padding: 1rem;
+    padding-bottom: 0.25rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+  }
+  .takeaway .header {
+    font-size: 1.2rem;
+    font-weight: 600;
+    font-style: italic;
+  }
+</style>
