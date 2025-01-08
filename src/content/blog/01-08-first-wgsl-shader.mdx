@@ -1,0 +1,57 @@
+---
+title: "My first WGSL shader"
+description: 'Understanding WGSL semantics'
+pubDate: 'Jan 08 2025'
+heroImage: 'shader-2.png'
+---
+
+Today started with the first coach meeting. Wouter suggested to start with [WebGPU Fundamentals](https://webgpufundamentals.org/webgpu/lessons/webgpu-how-it-works.html#toc), where I accidentally opened a lesson from the middle instead of the beginning.
+
+
+Seeing snippets of WGSL code I was quite lost, but then I saw [Tour of WGSL](https://google.github.io/tour-of-wgsl/).
+To understand the context better, I have decided to try out WGSL directly, so I went through the half of the tour and saved some memroy anchors to my figma conspect:
+![WGSL Figma concept](/shaders-research-blog/images/conspect.png)
+
+To get more comfortable with WGSL, I decided to use a turn a little example from **Book of Shaders into WGSL:**
+```javascript
+@binding(0) @group(0) var<uniform> frame : u32;
+
+@vertex
+fn vtx_main(@builtin(vertex_index) vertex_index : u32) -> @builtin(position) vec4f {
+  const pos = array(
+    vec2( 0.0,  1.0),
+    vec2( -1.0, -1.0),
+    vec2( 1.0, -1.0),
+  );
+
+  return vec4f(pos[vertex_index], 0, 1);
+}
+//https://thebookofshaders.com/08/
+// YUV to RGB matrix
+const yuv2rgb = mat3x3f(1.0, 0.0, 1.13983,
+                    1.0, -0.39465, -0.58060,
+                    1.0, 2.03211, 0.0);
+
+@fragment
+fn frag_main() -> @location(0) vec4f {
+  var color : vec3f = yuv2rgb * vec3f(0.5, sin(f32(frame) / 128), 0.5);
+  return vec4(color, 1);
+}
+```
+
+**Multiplying colors by YUV matrix** turned from yellowish-greenish triangle into cyan, although it's not quite clear on the hero Image of the post, we all need to start somewhere=).
+On my way there I also got a bit distracted with a [reminder how multiplying matrices works](https://mathinsight.org/matrix_vector_multiplication#:~:text=Matrix%2Dvector%20product&text=If%20we%20let%20Ax,na21a22%E2%80%A6), I had a vague memory from high school but wanted to understand the outcome better.
+
+Then I re-read Fundamentals articles again and I feel how it starts to layer in my head.
+For tomorrow I am planning to:
+- map out the roadmap;
+- start from [proper beginning of WebGPU Fundamentals](https://webgpufundamentals.org/webgpu/lessons/webgpu-fundamentals.html) again;
+- re-visit [this article about differences between WebGL and WebGPU](https://webgpufundamentals.org/webgpu/lessons/webgpu-from-webgl.html), as it brings more clarity to me:
+![conspect-3](/shaders-research-blog/images/conspect-3.png)
+I also saved this comparison
+![conspect-2](/shaders-research-blog/images/conspect-2.png)
+
+By the way, I just learned that actually its best practice **not to use ternary opeartors, or any flow controls,** when writing GLSL code as it's not good for performance, it might apply to WGSL as well.
+
+
+*My research might seem not linear right now, but I need to get the gist of the context and try out things to better understand the basics.*
