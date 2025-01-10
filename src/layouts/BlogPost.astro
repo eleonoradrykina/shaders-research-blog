@@ -13,7 +13,7 @@ const { title, description, pubDate, updatedDate, heroImage } = Astro.props;
 <html lang="en">
   <head>
     <BaseHead title={title} description={description} />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={`${SITE_BASE}/favicon.svg`} />
     <style>
       main {
         width: calc(100% - 2em);
