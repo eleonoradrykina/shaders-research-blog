@@ -33,7 +33,7 @@ buffers: [
 ```
 ![stride](/shaders-research-blog/images/stride.png)
 #### Index buffers
-For optimizing vertices compuataion, we can use index buffers:
+For optimizing vertices computaion, we can use index buffers to re-use existing vertices:
 ![index buffers](/shaders-research-blog/images/index-buffers.png)
 
 Then the code turns into this, creating vertices and also **Index Data**:
@@ -109,7 +109,7 @@ function createCircleVertices({
 }
 ```
 We then set Index Buffer as well to pass our index data.
-we also need to call different draw function:
+We also need to call different draw function:
 ```javascript
         pass.drawIndexed(numVertices, kNumObjects);
 ```
@@ -117,6 +117,21 @@ And we **saved 33% vertices**, slay!
 This is what's we're getting by the way:
 ![indexBuffer](/shaders-research-blog/images/indexBuffer.png)
 
-Now we're ready to go to **textures**
+Now we're ready to go to **textures**.
 
 #### Textures
+
+Okay, we're finally at the last part of passing data into the WebGPU shaders!
+
+The major difference for textures is that they are accessed by **sampler**, which can blend up to 16 values together in a texture.
+As if there was not enough new information before yay....
+
+The first thing I noticed when started following the lesson is **flipped textures,** which we faced a lot during Bachelor Thesis, and here was the eplanation for that:
+
+![indexBuffer](/shaders-research-blog/images/flipped-textures.png)
+
+It was also nice finally to see familiar things about UV explanation and mixing, this is something I've encountered before and is easier for comprehension=)
+I think I finally understood meaning of **magFilter** and clamping textures to edge / repeating, which I saw in three js before very briefly:
+![magFilter](/shaders-research-blog/images/magFilter.png)
+
+It's nice knowing that even if I am not writing shaders low-level daily, I understand how graphics api works in general better!
