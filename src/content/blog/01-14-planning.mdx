@@ -1,0 +1,59 @@
+---
+title: "Planning"
+description: 'What can I use from what I learnt?'
+pubDate: 'Jan 14 2025'
+heroImage: 'Roadmap.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+#### WebGPU Fundamentals
+
+I am finishing going through textures lessons, including using pictures and videos as textures. I don't think I am going to use loading images on this low level, as I am limited in time, I need to be able to think of the **best usage for shaders**, something you would **not be able** to do on **Three js / React Three fiber** level.
+Per my planning I need to start working on the set up and the scene tomorrow, so there are some things I will go through / revisit while working on my experience.
+
+During this passion project I will not look into creating 3d Math on shading languages level, as Three js can do nearly everything much easier.
+So my plan for WebGPU fundamentals is:
+- Finish **textures** lessons (today)
+- Deeper than fundamental **[Compute shader lessons](https://webgpufundamentals.org/webgpu/lessons/webgpu-compute-shaders.html)**
+- Check **[bind group layouts](https://webgpufundamentals.org/webgpu/lessons/webgpu-bind-group-layouts.html),** I have a feeling I might need them
+- **Particles** lessons – [WebGPU Points](https://webgpufundamentals.org/webgpu/lessons/webgpu-points.html)
+- Revsisting [How WebGPU works](https://webgpufundamentals.org/webgpu/lessons/webgpu-how-it-works.html) and [difference between WebGL and WebGPU](https://webgpufundamentals.org/webgpu/lessons/webgpu-from-webgl.html)
+
+
+While doing so, there are things I know I will revisit anyway, such as [Memory layout](https://webgpufundamentals.org/webgpu/lessons/webgpu-memory-layout.html) and [Transparency and blending](https://webgpufundamentals.org/webgpu/lessons/webgpu-transparency.html)
+
+#### Planning usage
+
+Every day that I read another article from WebGPU fundamentals, I kind of scroll through the whole website one more time to see what became clearer and if new knowledge filled some spots that were blank before=)
+It's time to make decisions now! Based on what I learnt about WGSL and TSL, I mapped out my *features,* put short *explanation about each context* and specified which *shading language* I am thinking to use for that:
+
+![Roadmap](/shaders-research-blog/images/Roadmap.png)
+
+The reason why I have **GLSL / WGSL** 3 times is because I am not sure what will be the better soultion at the moment and if I will be able to work with WGSL at the same level as GLSL. I am at least sure to highlight **compute shaders of WGSL** for my **room no. 3,** and to make use of **TSL** as more **textures / materials** for my **room no. 4.** As this whole project is a research proccess, these choices might change based on what I am going to learn on my way.
+
+Then I also added visual references for each location:
+
+**Intro and Corridor**
+![Corridor mood](/shaders-research-blog/images/corridor-mood.png)
+
+**Listening sphere**
+![Wobbly sphere mood](/shaders-research-blog/images/wobbly-sphere-mood.png)
+
+**Room with a conspiracy theory**
+![Conspiracy theory mood](/shaders-research-blog/images/conspiracy-theory-mood.png)
+
+**Distorted memories and outside outro**
+![Outro mood](/shaders-research-blog/images/memories-and-outro-mood.png)
+
+
+#### Back to today's programme
+
+I am finishing with textures, even though I don't think ia m goimng to load videos in WGSL, I went over the article, and the CubeMap article actually helped me to understand how normals abd environment map works.
+I also have better understanding how lighting works together with normals, this is quite helpful picture:
+
+![Cube normals](/shaders-research-blog/images/cube-normals.png)
+
+Following the lessons, I have created [several demos in my demo folder in Liminal Russia repo](https://github.com/eleonoradrykina/liminal-russia/tree/demos/demos).
+Now my brain is boiling with theory, and I want to switch to practice with some faster beautiful results:)
+
+#### Flow fields
