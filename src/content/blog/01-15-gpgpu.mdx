@@ -1,0 +1,20 @@
+---
+title: "GPGPU"
+description: 'Ping-pong shaders'
+pubDate: 'Jan 15 2025'
+heroImage: 'ping-pong.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+#### GPGPU
+
+So to pick up where I left off, I want to understand how **Frame Buffers** and **Ping-ponging** works to be able:
+- compare it with WGSL compute shaders
+- work on my Memories Room no. 2
+
+<Takeaway>
+So, we have a texture in our **Frame Buffer Object** which we can use for our vertices position instead of simply rendering it, like we would do normally.
+Because we **can not read and write** to the same Frame Buffer Object at the same time, we will update it and then exchange them to each other (*ping-ponging*):
+</Takeaway>
+
+![ping-pong](/shaders-research-blog/images/ping-pong.png)
