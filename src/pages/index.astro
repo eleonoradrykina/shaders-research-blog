@@ -2,6 +2,7 @@
 import BaseHead from "../components/BaseHead.astro";
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
+import { Image } from "astro:assets";
 import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
 ---
 
@@ -17,8 +18,32 @@ import { SITE_TITLE, SITE_DESCRIPTION } from "../consts";
       <p>
         Researching <b>GLSL, WGSL, TSL</b> possibilities and implementations.
       </p>
-
+      <p>
+        The link to github repo: <a
+          href="https://github.com/eleonoradrykina/liminal-russia"
+          >https://github.com/eleonoradrykina/liminal-russia</a
+        >
+      </p>
+      <h2 class="subheader">Content, tech stack, and visual moodboard:</h2>
+      <Image
+        src="/shaders-research-blog/images/Roadmap.png"
+        alt="Roadmap"
+        width={800}
+        height={400}
+      />
+      <Image
+        src="/shaders-research-blog/images/moodboard.png"
+        alt="moodboard"
+        width={800}
+        height={400}
+      />
       <Footer />
     </main>
   </body>
 </html>
+<style>
+  .subheader {
+    margin-top: 2rem;
+    font-size: 1.5rem;
+  }
+</style>
