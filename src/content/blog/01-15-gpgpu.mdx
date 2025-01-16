@@ -18,3 +18,103 @@ Because we **can not read and write** to the same Frame Buffer Object at the sam
 </Takeaway>
 
 ![ping-pong](/shaders-research-blog/images/ping-pong.png)
+
+I feel that the most challenging thing will be to do the setup myself, as Bruno Simon's tutorial provided quite a ready solution with **GPUComputationRenderer**:
+```javascript
+/**
+ * GPU Compute
+ */
+//Setup
+const gpgpu = {}
+gpgpu.size = Math.ceil(Math.sqrt(baseGeometry.count))
+gpgpu.computation = new GPUComputationRenderer(gpgpu.size, gpgpu.size, renderer) //square: width , height
+
+//Base particles
+const baseParticlesTexture = gpgpu.computation.createTexture()
+
+for (let i = 0; i < baseGeometry.count; i++) {
+    const i3 = i * 3
+    const i4 = i * 4
+
+    // Position based on geometry
+    baseParticlesTexture.image.data[i4 + 0] = baseGeometry.instance.attributes.position.array[i3 + 0]
+    baseParticlesTexture.image.data[i4 + 1] = baseGeometry.instance.attributes.position.array[i3 + 1]
+    baseParticlesTexture.image.data[i4 + 2] = baseGeometry.instance.attributes.position.array[i3 + 2]
+    baseParticlesTexture.image.data[i4 + 3] = Math.random()
+
+}
+
+console.log(baseParticlesTexture)
+
+//Particles variable
+gpgpu.particlesVariable = gpgpu.computation.addVariable('uParticles', gpgpuParticlesShader, baseParticlesTexture)
+gpgpu.computation.setVariableDependencies(gpgpu.particlesVariable, [gpgpu.particlesVariable]) //you can pass more dependencies here
+
+// Uniforms
+gpgpu.particlesVariable.material.uniforms.uTime = new THREE.Uniform(0)
+gpgpu.particlesVariable.material.uniforms.uDeltaTime = new THREE.Uniform(0)
+gpgpu.particlesVariable.material.uniforms.uBase = new THREE.Uniform(baseParticlesTexture)
+gpgpu.particlesVariable.material.uniforms.uFlowFieldInfluence = new THREE.Uniform(0.5)
+gpgpu.particlesVariable.material.uniforms.uFlowFieldStrength = new THREE.Uniform(2.0)
+gpgpu.particlesVariable.material.uniforms.uFlowFieldFrequency = new THREE.Uniform(0.5)
+
+
+//Init
+gpgpu.computation.init()
+
+```
+I will look into its [code](https://github.com/mrdoob/three.js/blob/8286a475fd8ee00ef07d1049db9bb1965960057b/examples/jsm/misc/GPUComputationRenderer.js) more closely tomorrow, as Bruno mentioned, it's a good thing that it's [well-documented](https://github.com/mrdoob/three.js/blob/8286a475fd8ee00ef07d1049db9bb1965960057b/examples/jsm/misc/GPUComputationRenderer.js).
+
+Following the tutorial, we saved all vertices for our particles positions in a texture which was update using shader, and then retrieved this texture in our *actual* vertex shader.
+Another thing for me to keep in mind that I am kind of used to having a lot of built-in things in shaders such as *modelMatrix* and *viewMatrix* and I am not sure you have them in WGSL (will see soon!).
+
+#### Tweaks
+
+Okay, we have a nice result, let's play with it just a little bit for now, and then also get back to it later!
+
+First, I used an AI-generated model from [Trellis](https://trellis3d.github.io/), which was extremely cool, I definetely want to try it out for my final experience result. 
+The model is a bit uneven, which does not matter at all when you use it as a geometry base for points.
+After some hassle I managed to get the vertex colors inside of my model (apparently it can be hidden in different attributes, not only *color*, but sometimes *color_1* etc)
+
+It's also nice because I will be able to add my own lighting in Blender and then bake it.
+This is the outcome:
+
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/particles-flowfield-overview.mp4"></video>
+
+Okay, but because my main vibe is quite depressing, I want this "memory" of the building to decay at some point, so the points will be *falling down*.
+At first I was a bit silly and just put minus on the whole FlowField:
+
+```javascript
+        //Flow field
+        vec3 flowField = vec3(
+            simplexNoise4d(vec4(particle.xyz * uFlowFieldFrequency + 0.0, time)),
+            simplexNoise4d(vec4(particle.xyz * uFlowFieldFrequency+ 1.0, time)),
+            simplexNoise4d(vec4(particle.xyz * uFlowFieldFrequency + 2.0, time))
+        );
+
+    //normalize direction
+     flowField = (-1.0)* abs(normalize(flowField));
+
+```
+As you can see, this makes points fly away down, but also towards negative X:
+
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/disintegration-wrong.mp4"></video>
+
+So actually we need to make sure that we only have negative Y in the flowfield:
+```javascript
+        //Flow field
+        vec3 flowField = vec3(
+            simplexNoise4d(vec4(particle.xyz * uFlowFieldFrequency + 0.0, time)),
+            (-1.0)*abs(simplexNoise4d(vec4(particle.xyz * uFlowFieldFrequency+ 1.0, time))),
+            simplexNoise4d(vec4(particle.xyz * uFlowFieldFrequency + 2.0, time))
+        );
+
+    //normalize direction
+     flowField = (normalize(flowField));
+```
+
+Now it seems right:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/disintegration-right.mp4"></video>
+
+At this point I need to stop before I spend too much time tweaking this, and get back to it later when I will be working on the final result!
+Next step will switch to compute shaders abd particles in WGSL.
