@@ -1,0 +1,100 @@
+---
+title: "WGSL Particles"
+description: 'going towards particle system'
+pubDate: 'Jan 18 2025'
+heroImage: 'particles-hero.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+#### WebGPU Points
+
+My favorite thing about vertex and compute shaders is to create **particles systems that look alive.**
+For my "Conspiracy Theory" room I want to have a mysterious particles system that will look like it has hidden answers to all the questions. It has its roots in "kitchen talks" in USSR era, where the only place where people could freely express their opinions were their kitchens.
+It later has morphed into drunk kitchen talks "for grown-ups" for my generation, during which some of participants were claiming they have full understanding and explanation to the current political situation. Most of the times it was United States trying to sabotage the prosperity of Russians and hypnotize them into zombies.
+
+But enough of history, let's code!
+
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/particles-sphere.mp4"></video>
+I followed particles article quite close, but added a twist with using **alha-map ![alpha-map](/shaders-research-blog/images/texture-1.png) in Frag shader** to make my particles fancier:
+
+
+```javascript
+        @fragment fn fs(vsOut: VSOutput) -> @location(0) vec4f {
+            // use texture as transparency mask
+            let mask = textureSample(t, s, vsOut.texcoord);
+            // Pre-multiply the RGB color by the alpha value
+            let alpha = mask.r * 1.0;  // here it can be even more transparent if needed
+            return vec4f(vec3f(0.4, 0.4, 0.9) * alpha, alpha);
+        }
+```
+
+Can we make things more interesting with a compute shader?
+
+After 1,5 hours of adding compute shader **just to achieve the same sphere**, I got my sphere a bit creased 😂😂:
+
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/particles-creased.mp4"></video>
+
+I think it might has to do with messing up with my positions array indexation.
+Aha! I was creating **vec3** for my initial particles, but then I went a little bit too fast and thinking about **life span** was treating them as vec4.
+For now I have updated the function that creates sphere geometry to return **vec4.**
+
+So now we have totally the same sphere (I've changed the color so it's more pleasant to look at), but with retrieving positions from compute shader:
+![same sphere but comoute shader](/shaders-research-blog/images/compute-sphere.png)
+
+<Takeaway>
+Now instead of passing initial positios array, we can play with poistions first and pass them into the vertex.
+I keep track of distance (not sure if it's a good solution right now), and when particles are too different from initial, I reset them.
+</Takeaway>
+
+Here's code of my new compute shader:
+
+```javascript
+        ${sharedConstants}
+        struct Particle {
+            pos: vec4f,    // xyz for position, w for lifetime/age (not used yet)
+        }
+
+        struct Chunk {
+            particles: array<Particle, 1000>,      // Current state
+            prevParticles: array<Particle, 1000>,  // Previous state
+            initialPos: array<Particle, 1000>,     // Initial/reset positions
+        };
+
+        struct Uniforms {
+            matrix: mat4x4f,
+            resolution: vec2f,
+            size: f32,
+            time: f32,
+        };
+
+        @group(0) @binding(0) var<storage, read_write> chunks: array<Chunk>;
+        @group(0) @binding(1) var<uniform> uni: Uniforms;
+
+        @compute @workgroup_size(64)
+        fn cs(@builtin(global_invocation_id) id: vec3u) {
+            if (id.x >= 1000) {
+                return;
+            }
+
+            let i = id.x;
+            let initialPos = chunks[0].initialPos[i].pos.xyz;
+            let distance = length(chunks[0].particles[i].pos.xyz - initialPos);
+
+            if (distance < 5.0) {
+                var newPos = chunks[0].particles[i].pos;
+                // Using time to create some distortion
+                newPos.x += sin(uni.time + f32(i) * 0.01) * 0.0001;
+                newPos.y += cos(uni.time * 0.5 + f32(i) * 0.01) * 0.0001;
+                chunks[0].particles[i].pos = newPos;
+            } else {
+                chunks[0].particles[i].pos = vec4f(initialPos, 1.0);
+            }
+
+            chunks[0].prevParticles[i] = chunks[0].particles[i];
+        }
+```
+
+This creates this beautiful swirl:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/compute-particles.mp4"></video>
+
+Next step will be to tune persistance and to get better control over understanding of vrtices positions, but basic setup is quite done!
