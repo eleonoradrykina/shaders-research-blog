@@ -1,0 +1,53 @@
+---
+title: "Building Up the Scene"
+description: 'Its time to build!'
+pubDate: 'Jan 20 2025'
+heroImage: 'corridor.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+Okay, it's time to set up the scene! Enough shaders for now, let's think ***spatially.***
+My main concern was how to let user move inside of my corridor kid of freely, without coding camera path?
+Back then I imagined it as BackRooms where you experience everything from first person POV, so I was in terms of camera movement only:
+
+![Backrooms_model](/shaders-research-blog/images/Backrooms_model.jpg)
+
+Then I saw [this tutorial](https://threejs-journey.com/lessons/create-a-game-with-r3f#) of Bruno Simon where he had physics and an actual player:
+![Bruno Simon's game](/shaders-research-blog/images/bruno-simon-game.png)
+
+<Takeaway>
+Not only it makes much more sense to put **physics colliders onto walls and floor** but also having an **actual player** helps to kind of "see yourself" in the environment.
+I think I was a little bit too fixated on that reference, anyway it is an inspiration and I am not building exact same copy, so why not have some fun?
+</Takeaway>
+
+I have changed the "player" to the capsule so fun and it's kind of entertaining how it's being pushed and thrown into sides, I was thiking maybe later I will add a model of some can instead of it.
+
+Also I want to create a feeling of *impossible geometry*, so I'm going to move my player to another spot unnoticeably (hopefully) so that they just continue navigating thinking that they are in an infinite loop.
+At first I drew a simple loop on paper:
+
+![corridor-sketch](/shaders-research-blog/images/corridor-sketch.jpg)
+
+So after following Three.js Journey tutorial I was excited to start: I've put my own, longer corridor with the ceiling and basic colors for now and this is how it looks:
+![First iteration](/shaders-research-blog/images/corridor.png)
+
+I switch between normal OrbitControls to get the whole overview while building the "architecture" of the scene, and player POV to see how it feels.
+Of course, there are a lot of things that would be tweaked in future like textures and light, but I already see one big difference...
+
+For some reason I always refered to this part of scene as "corridor" and imagined a corridor in my mind, but what does actually create this uncanny atmosphere in Backrooms?
+Let's see the reference again:
+![Backrooms_model](/shaders-research-blog/images/Backrooms_model.jpg)
+![Severance](/shaders-research-blog/images/Severance.webp)
+
+It's not **just a hallway**, it's a structure that is off to a human proportion, big, empty and repetitive. If you see the corridor that just goes straight and then maybe turns, how scary it can be?
+On the other hand, the more empty space you **don't see**, the more possibility there's something evil there.
+
+So let's add more space and re-think the architecture:
+![architecture-iteration-2l](/shaders-research-blog/images/architecture-iteration-2.png)
+*Debug version with no ceiling and no player*
+
+Noow we're getting there!
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/gameplay-1.mp4"></video>
+*Player POV*
+
+From here I also might try to make the geometry more complicated.
+Next step will be to think of **360 camera rotation**, adding **lights** and **textures**!
