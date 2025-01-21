@@ -1,0 +1,166 @@
+---
+title: "Building Up the Scene"
+description: 'Working on the experience environment'
+pubDate: 'Jan 21 2025'
+heroImage: 'floor-plan-react.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+#### Cleaning up the code
+First thing was to make my code a bit more clear and sustainable after all manual tweaks.
+
+I re-drew the plan and separated the walls into groups for convenience:
+![new floor plan](/shaders-research-blog/images/floor-plan-2.jpg)
+
+Here how it looks in debug mode: 
+![new floor plan react](/shaders-research-blog/images/floor-plan-react.png)
+
+```javascript
+
+    export default function Corridor() {
+
+    return <>
+        <Floor size={ 16 }/>
+        {/* GROUP A*/}
+        <WallHorizontal position={ [-9.7, 0.75, -4] } length = {12} />
+        <WallVertical position={ [-3.85, 0.75, -8.0] }length = {8}/>
+
+        {/* GROUP B*/}
+        <WallHorizontal position={ [-7.0, 0.75, -20] }length = {10 } />
+        <WallVertical position={ [-6.6, 0.75, -25.0] }length = {9.75}/>
+
+        {/* GROUP C*/}
+        <WallHorizontal position={ [12.7, 0.75, -22] } length = {6}/>
+        <WallVertical position={ [6.6, 0.75, -20.65] }length = {13}/>
+        <WallHorizontal position={ [8.7, 0.75, -14] } length = {14}/>
+
+        {/* GROUP D*/}
+        <WallVertical position={ [6.6, 0.75, -2.15] }length = {8}/>
+
+        <BoundsForward length={ 16} />
+        {/* <Ceiling size={ 16 }/> */}
+    </>
+}
+```
+
+#### Camera movement 
+My next question is how I move the camera?
+I am using Rapier with R3F for moving my capsule around. Physics engine and ``<RigidBody/>`` prevents capsule from going into the walls so I don't have to think about coding the bounds myself.
+Right now the camera always follows the capsule and looks at it. This creates feeling of looking only straight ahead.
+But my experience is very spatial, so we need to let the user to be able to look around.
+This is the code for the camera I started with:
+```javascript
+...
+
+        /**
+         * Camera
+         */
+        const bodyPosition = body.current.translation()
+
+        const cameraPosition = new THREE.Vector3()
+        cameraPosition.copy(bodyPosition)
+        cameraPosition.z += 2.25
+        cameraPosition.y += 0.65
+
+        const cameraTarget = new THREE.Vector3()
+        cameraTarget.copy(bodyPosition)
+        cameraTarget.y += 0.25 
+        cameraTarget.z -= 2.25
+
+        
+        smoothedCameraPosition.lerp(cameraPosition, 5 * delta)
+        smoothedCameraTarget.lerp(cameraTarget, 5 * delta )
+
+        state.camera.position.copy(smoothedCameraPosition)
+        state.camera.lookAt(smoothedCameraTarget)
+```
+
+At first, I added looking to the sides while going sideways, adding CameraRotation together with the impulse:
+```javascript
+        /**
+         * Controls
+         */
+        const { forward, backward, left, right, jump } = getKeys()
+
+        const impulse = { x: 0, y: 0, z: 0 }
+        const cameraRotation = { x: 0, y: 0, z: 0 }
+
+
+        const impulseStrength = 0.1 * delta
+
+        if (forward) {
+                impulse.z -= impulseStrength
+            }
+        if (backward) {
+                impulse.z += impulseStrength
+            }
+        if (left) {
+                impulse.x -= impulseStrength
+                cameraRotation.x -= 1.5
+            }
+        if (right) {
+                impulse.x += impulseStrength
+                cameraRotation.x += 1.5
+            }
+            
+        body.current.applyImpulse(impulse)
+
+
+        /**
+         * Camera
+         */
+        const bodyPosition = body.current.translation()
+
+        const cameraPosition = new THREE.Vector3()
+        cameraPosition.copy(bodyPosition)
+        cameraPosition.z += 2.25
+        cameraPosition.y += 0.65
+
+        const cameraTarget = new THREE.Vector3()
+        cameraTarget.copy(bodyPosition)
+        cameraTarget.y += 0.25 
+        cameraTarget.z -= 2.25
+        cameraTarget.x += cameraRotation.x
+
+        
+        smoothedCameraPosition.lerp(cameraPosition, 5 * delta)
+        smoothedCameraTarget.lerp(cameraTarget, 5 * delta )
+```
+But this gave very limited field of view which also did not work smoothly with the movement.
+
+Then, I thought what if detach LookAt from the capsule for a second? But then the position is still updating each frame causing this camera shaking:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/camera-LAT-bug.mp4"></video>
+
+Then I realised: we need to attach the camera to the capsule **only when we're moving** the capusle, letting user to look around when we're standing at the same place.
+
+So I've added updating camera on Each frame only if we're moving:
+```javascript
+        if (forward || backward || left || right || jump) {
+            state.camera.position.copy(smoothedCameraPosition)
+            state.camera.lookAt(smoothedCameraTarget)
+        }
+```
+
+And set the bounds on the rbitControls because it is now enabled when the user does not move:
+```javascript
+        <OrbitControls 
+            enablePan={ false }
+            enableZoom={ false }
+            maxPolarAngle={ Math.PI / 2 }
+            minPolarAngle={ Math.PI / 2 }
+            maxAzimuthAngle={ Math.PI / 2 }
+            minAzimuthAngle={ -Math.PI / 2 }
+            makeDefault 
+        />
+```
+I also tweaked the inital camera position so that camera starts from the correct place. 
+It looks extremely weird, but I think it's closer to what I want:
+
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/camera-movement-bug.mp4"></video>
+
+The problem is that my camera does not "remember" where we were before we stopped moving. I tried to fix that but I think I am missing something here.
+I compared states of camera while moving and after, but they look the same:
+
+![cameras comnparison](/shaders-research-blog/images/camera-state-comparison-1.png)
+![cameras comnparison](/shaders-research-blog/images/camera-state-comparison-2.png)
+I will think about it more later, for now I switched back to "straight" camera
