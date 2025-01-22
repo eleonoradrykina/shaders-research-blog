@@ -1,0 +1,107 @@
+---
+title: "Creating wallpapers with shaders"
+description: ' '
+pubDate: 'Jan 22 2025'
+heroImage: 'hero-22jan.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+At first, I made sure that shader works and passed UV coordinates through it:
+![wallpaper-shader](/shaders-research-blog/images/wallpaper-shader-1.png)
+
+Then I mixed it with our walls color, again, just to check that it works:
+![wallpaper-shader](/shaders-research-blog/images/wallpaper-shader-2.png)
+
+Nice! now we can write shader code.
+To create wallpaper, we will need to divide our walls into grid and draw stripes between cells.
+Flowers are also easy as it's just sinusoid shape.
+This what I got:
+![wallpaper-shader](/shaders-research-blog/images/wallpaper-shader-3.png)
+
+After adding flowers, I wanted to create a pattern with a heart shape with flowers around it. 
+So we need to check what cell we're in and draw a shape depending on that:
+```javascript
+    // Place flowers every 2 cells
+    if (mod(cellId.x, 2.0) == 0.0 && mod(cellId.y, 2.0) == 0.0) {
+        vec2 center = (cellId + vec2(0.6)) / gridSize;
+        strength += flower(center, 0.0006, aspectCorrectedUV);
+    }
+
+    // Place shape every 4 cells with a 1 cell offset
+    if (mod(cellId.x, 4.0) == 1.0 && mod(cellId.y, 4.0) == 1.0) {
+        vec2 center = (cellId + vec2(0.6)) / gridSize;
+        strength += shape(center, 0.0006, aspectCorrectedUV);
+    }
+
+```
+![wallpaper-shader](/shaders-research-blog/images/wallpaper-shader-4.png)
+
+Then I wanted to add noise a little bit thinking that I only need to offset everything:
+```javascript
+    //add noise
+    float noise = cnoise(uv * 1000.0) * 0.25;
+    strength += noise;
+
+```
+
+And accidentally got this paper wallpaper texture instead!
+![wallpaper-shader](/shaders-research-blog/images/wallpaper-shader-5.png)
+
+then I noticed that noise does not use my aspectRatio and id a bit too stretched, so I've put aspectRatio into nopise:
+
+```javascript
+    //add noise
+    float noise = cnoise(vec2(uv.x * 1000.0* aspectRatio, uv.y * 1000.0)) * 0.5;
+    strength += noise;
+
+```
+but the perfect noise did not look like the paper anymore....
+So I've saved the stretching factor a little bit:
+```javascript
+   float noise = cnoise(vec2(uv.x * 1000.0* aspectRatio * 0.25, uv.y * 1000.0)) * 0.3; 
+```
+Now it's nice! At this point Ella also told me to make the heart "normal" because it is not mysterious at all but just looks weird...
+
+So I flipped it back, and it's time to animate our flowers. I've played with tweaking, put time Uniform into sin and also into noise for the flower size and this is how it's gonna look in 10x speed:
+
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/wallpaper-shader-6.mp4"></video>
+
+Nice! but I want it to be extremely subtle, nearly not niticeable at all, just to create the feeling that something is off:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/wallpaper-shader-7.mp4"></video>
+This
+
+Earlier today I was looking for the floor carpet textures, but now I thought why do I need textures when I can code *all the textures* myself?? *evil laugh*
+
+We already have the grid logic, now we need stripes for diffuse map **and emissive swuares for the light**.
+It means we can use my favorite Bloom postprocessing effect! 
+To make it even more mysterious, I added flickering to the squares.
+To randomize flickering I used their indexes inside of flickering itself and also to determine which square should flicker at what time:
+
+```javascript
+ // Place light every 4 cells
+    if (mod(cellId.x, 4.0) == 0.0 && mod(cellId.y, 4.0) == 0.0) {
+        //minus bars width
+        if (cell.x > barWidth && cell.y > barWidth) {
+            //flcker every n seconds:
+            float n = (cellId.x + cellId.y);
+            float time = mod(uTime, n);
+            if (time > (n - 1.0)) {
+                flicker = sin(uTime * 5.0 * (cellId.x + cellId.y)); //from -1 to 1
+                flicker = abs(flicker);
+            }
+            emmissiveStrength = vec3(5.0, 5.0, 8.0) * flicker;
+        }
+    }
+```
+Woow now it looks really nice!😍😍😍
+You also can notice how flowers are changing on the wallpaper here if you look closely:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/wallpaper-shader-8.mp4"></video>
+After that i changed my timer float n to multiply the indexes:
+```javascript
+       float n = (cellId.x * cellId.y);
+```
+so that the light flickers less often and more random.
+
+At the end I also added noise to Diffuse and to Bump texture of the ceiling:
+![wallpaper-shader](/shaders-research-blog/images/hero-22jan.png)
+I am not sure if I remember correctly how bump texture works, I will look into it tomorrow, together with camera movement after Wouter's consult 👀
