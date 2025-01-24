@@ -1,0 +1,185 @@
+---
+title: "Camera movement and more wallpapers"
+description: 'Fixing Orbit Controls and writing more shaders in glsl'
+pubDate: 'Jan 24 2025'
+heroImage: 'worley-noise.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+#### Camera
+
+After taking a day off, I got back to fixing my "Orbit Controls" by going away from OrbitControls.
+
+The main idea is:
+<Takeaway>
+ I want to always LookAt my object (let's look right at it for now), and the camera will be rotating around it with fixed radius.
+ The user rotates camera around the object with Left and Right controls, and goes back and forward with Backward and Forward controls. 
+ I will use the angle of camera rotation to calculate absolute values of "back" and "forward" movement.
+</Takeaway>
+
+This is the setup of the demo, still using physics here so that I don't have to change too much:
+```javascript
+ useFrame((state, delta) => {
+
+        /**
+         * Controls
+         */
+        const { forward, backward, left, right } = getKeys()
+
+        //Empty statements for now:
+
+        if (forward) {
+
+            }
+        if (backward) {
+     
+            }
+        if (left) {
+
+            }
+        if (right) {
+
+            }
+
+        /**
+         * Camera
+         */
+        const bodyPosition = body.current.translation()
+
+
+        const cameraPosition = new THREE.Vector3()
+
+        //Camera is following orbit with a set a radius around the body
+        cameraPosition.x = bodyPosition.x + Math.cos(angle) * radius //depends on rotation
+        cameraPosition.y = bodyPosition.y + 0.5 // always a bit higher than our body
+        cameraPosition.z = bodyPosition.z + Math.sin(angle) * radius //depends on rotation
+
+        const cameraTarget = new THREE.Vector3()
+        
+        smoothedCameraPosition.lerp(cameraPosition, 5 * delta)
+        smoothedCameraTarget.lerp(cameraTarget, 5 * delta )
+
+        state.camera.position.copy(smoothedCameraPosition)
+        state.camera.lookAt(smoothedCameraTarget)
+
+    })
+```
+
+I saw that we can get Vector from radius and angle and SPherical, but I want to do it myself so I have more control over the position and its set more explivitly:
+cameraPosition.setFromSpherical(new THREE.Spherical(radius, angle, 0))
+
+With radius set to 3 this is how it looks:
+![camera-1](/shaders-research-blog/images/camera-demo-1.png)
+
+Now let's try to change the angle and orbit around the body:
+```javascript
+        if (forward) {
+            }
+        if (backward) {
+     
+            }
+        if (left) {
+            setAngle(angle + 0.1*delta)
+            }
+        if (right) {
+            setAngle(angle - 0.1*delta)
+            }
+        
+```
+At first I have not noticed much so here I've added some random cubes to see the actual rotation and position change:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/orbit-controls-rotation-demo.mp4"></video>
+
+It works, but a little bit too slow. Let's speed it up and try to move the capsule on forward and backward:
+
+```javascript
+    useFrame((state, delta) => {
+
+        /**
+         * Controls
+         */
+        const { forward, backward, left, right } = getKeys()
+
+        const impulseStrength = 0.2 * delta
+
+        const direction = new THREE.Vector3()
+
+        if (forward) {
+            direction.x = -Math.cos(angle) * impulseStrength
+            direction.z = -Math.sin(angle) * impulseStrength
+            }
+        if (backward) {
+            direction.x = Math.cos(angle) * impulseStrength
+            direction.z = Math.sin(angle) * impulseStrength
+            }
+        if (left) {
+            setAngle(angle + 0.5*delta)
+            }
+        if (right) {
+            setAngle(angle - 0.5*delta)
+            }
+        
+        body.current.applyImpulse(direction)
+
+        /**
+         * Camera
+         */
+        const bodyPosition = body.current.translation()
+
+
+        const cameraPosition = new THREE.Vector3()
+        cameraPosition.x = bodyPosition.x + Math.cos(angle) * radius
+        cameraPosition.y = bodyPosition.y + 0.5
+        cameraPosition.z = bodyPosition.z + Math.sin(angle) * radius
+
+        const cameraTarget = new THREE.Vector3()
+        cameraTarget.copy(bodyPosition)
+        
+        smoothedCameraPosition.lerp(cameraPosition, 5 * delta)
+        smoothedCameraTarget.lerp(cameraTarget, 5 * delta )
+
+        state.camera.position.copy(smoothedCameraPosition)
+        state.camera.lookAt(smoothedCameraTarget)
+
+    })
+    ```
+And it works like this:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/orbit-controls-demo.mp4"></video>
+
+I think this is a good time for a confession: as I write the blog alongside with coding, sometimes I am changing snippets of code that I've just pasted here and don't understand why I can't see changes in my project...
+This is why it's a good idea to take a break from time to time. 
+This is final result in my experience (I took the ceiling out for the moment):
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/controls-final.mp4"></video>
+
+I also understood that even I am lost in my rooms from the capsule perspective and maybe there's no need to hide secret *"transporting"* areas for even greater confusion... will leave it for now.
+
+Let's add one more wallpaper texture and the floor texture!
+
+#### Floor
+As usual, first let's check that our frag shader works:
+![check](/shaders-research-blog/images/check.png)
+
+I tried other Worley noise for the difference, but I did not understand how to use it🤨🤨
+![check](/shaders-research-blog/images/worley-noise.png)
+
+Putting Perlin noise for now and will get back to Worley later one more time.
+I've also added Leva controls (I should have done it long time ago):
+
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/carpet-noise.mp4"></video>
+
+I've got feedback from Ella that floor looks weirdly pixelated (I thought it were just my eyes at this point), putting step function to cut off blurred mixing helped:
+```javascript
+    float noise = step(threshold, cnoise(vUv * scale));
+```
+
+I might tweak it a bit later as well as I am not quite happy with this noise.
+
+#### Wallpaper 
+I want to have mix of walls with wallpapers and plain walls. This time I want to create stripes with some more complex wavy simmetrical ornament.
+But for today just to start with I added stripes and paper texture. The logic is quite similar to previous wallpaper, the most interesting part is ahead.
+
+This is what I have for today, I also tweaked camera target a bit above the bosy to get a better angle while navigating the experience:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/24-jan-gameplay.mp4"></video>
+
+For tomorrow I am planning to work on the second wallpaper, tweaking the light for the scene, and after that I can start conecting my rooms!
+I already miss WGSL a little bit... 
+
