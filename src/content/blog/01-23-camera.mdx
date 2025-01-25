@@ -65,8 +65,10 @@ This is the setup of the demo, still using physics here so that I don't have to 
     })
 ```
 
-I saw that we can get Vector from radius and angle and SPherical, but I want to do it myself so I have more control over the position and its set more explivitly:
-cameraPosition.setFromSpherical(new THREE.Spherical(radius, angle, 0))
+I saw that we can get Vector from radius and angle:
+``cameraPosition.setFromSpherical(new THREE.Spherical(radius, angle, 0))``
+But I want to do it myself so I have more control over the position and its set more explicitly:
+
 
 With radius set to 3 this is how it looks:
 ![camera-1](/shaders-research-blog/images/camera-demo-1.png)
@@ -158,7 +160,7 @@ Let's add one more wallpaper texture and the floor texture!
 As usual, first let's check that our frag shader works:
 ![check](/shaders-research-blog/images/check.png)
 
-I tried other Worley noise for the difference, but I did not understand how to use it🤨🤨
+I wanted to try different noise, and tried Worley, but I did not understand how to use it🤨🤨
 ![check](/shaders-research-blog/images/worley-noise.png)
 
 Putting Perlin noise for now and will get back to Worley later one more time.
@@ -177,7 +179,7 @@ I might tweak it a bit later as well as I am not quite happy with this noise.
 I want to have mix of walls with wallpapers and plain walls. This time I want to create stripes with some more complex wavy simmetrical ornament.
 But for today just to start with I added stripes and paper texture. The logic is quite similar to previous wallpaper, the most interesting part is ahead.
 
-This is what I have for today, I also tweaked camera target a bit above the bosy to get a better angle while navigating the experience:
+This is what I have for today, I also tweaked camera target a bit above our body to get a better angle while navigating the experience:
 <video controls muted autopolay loop width="800" src="/shaders-research-blog/images/24-jan-gameplay.mp4"></video>
 
 For tomorrow I am planning to work on the second wallpaper, tweaking the light for the scene, and after that I can start conecting my rooms!
