@@ -20,16 +20,16 @@ Secondly, the bloom effect does not actually lights up our walls and floor and d
 I have **9 fake lights with Bloom effect,** but I don't want to put **9 lights** there because it is **not good for the performance.** Instead, I will try to fake the light with three js lights like it's coming from my ceiling lamps.
 Becaue the whole scene is surreal and a bit off, I think it can be okay if it is not 100% realistic.
 
-At first, I thought maybe I could get away with 3 spotlights, each spotlight for one row of lights:
+At first, I thought maybe I could get away with **3 spotlights,** each spotlight for one row of lights:
 ![spotlights](/shaders-research-blog/images/spotlights-1.png)
 ![spotlights](/shaders-research-blog/images/spotlights.png)
 
 This is not it at all, and the shadows mixing seems extremely weird and dirty.
 
-Then I thought maybe directional light? It gave better shadows, but the light itself did not make sense.
-What I want is some rooms being lit up and some places beind darker so you're a bit scared to go in there.
+Then I thought maybe **directional light?** It gave **better shadows**, but the light itself did not make sense.
+What I want is **some rooms being lit up** and **some places being darker** so you're a bit scared to go in there.
 
-So then I decided to place pointlights into my rooms near the fale lamps. Sometimes I've placed them right into the lamos, and sometimes a bit next to it to get a wider area lit:
+So then I decided to place **pointlights** into my rooms near the fake lamps. Sometimes I've placed them right into the lamos, and sometimes a bit next to it to get a wider area lit:
 ![point-light-1](/shaders-research-blog/images/point-light-1.png)
 ![point-light-2](/shaders-research-blog/images/point-light-2.png)
 ![point-light-3](/shaders-research-blog/images/point-light-3.png)
@@ -37,9 +37,9 @@ Check out the **bump map** on the ceiling! Now you can really see it, nice!
 Such a nice result with just  reusing mixing of colors for bump texture:
 ``csm_Bump = vec3((1.0 - strength) * 0.4);``
 
-I have only 1 ambient light and 4 pointlights and I have quite a scary scene already hihihi
+I have only **1 ambient light and 4 pointlights** and I have quite a scary scene already hihihi
 
-Before going further to the wallpapers, I also clamped the camera position so that camera can not go outside the room anymore.
+Before going further to the wallpapers, I also **clamped the camera position** so that camera can not go outside the room anymore.
 
 #### Wallpaper
 I spent a little bit more time than expected on lights, checking camera, and then scrolling through Shader Toy for inspiration and then not finding anything, so for now I added just simple shell-like ornaments:
