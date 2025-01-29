@@ -1,0 +1,163 @@
+---
+title: "Flow Field in GLSL"
+description: 'Going further with distorted memories room'
+pubDate: 'Jan 27 2025'
+heroImage: 'particles-khruschevka.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+ 
+
+##### *This post takes up 3 days – 27-29 Jan, because of slow pace work and lack of time*
+---
+
+Sometimes it takes hours just to understand what's wrong with the .blend / .glb file and to show it in your project...
+And today is that day. Apart from quite silly "oh I didn't realize the model is **100 times bigger**", somehow the scene is not rotated(if you just add it to your three js scene), but the **geometry attributes** are...
+
+
+After some time we (Ella is saving me with Blender here) noticed that mesh is rotated in blender indeed, however fixing it in blender did not rotate it the correct way in three js. Baking vertex colors also did not go well from the beginning,
+So when I at least saw correctly oriented system resembling the house I already was a bit relieved:
+![particles-khruschevka](/shaders-research-blog/images/particles-khruschevka.png)
+
+Finally, Ella managed to tweak the settings so that she sees texture in **"no-texture" preview mode in Blender** (that means it's gonna work for me):
+![particles-khruschevka](/shaders-research-blog/images/particles-khruschevka-2.png)
+
+But colors are somehow weird, like extremely low quality texture, when the texture on our original model is quite detailed:
+
+![khruschevka](/shaders-research-blog/images/khruschevka-model.png)
+Just got these screenshots from Ella, this is hilarious:
+![khruschevka](/shaders-research-blog/images/original-texture.png)
+![khruschevka](/shaders-research-blog/images/ugly-texture.png)
+
+Finally we fixed the colors and while debugging I saw that I like the effect together with the normal model itself:
+![khruschevka](/shaders-research-blog/images/khruschevka-flow-field.png)
+From here I finally can work further with the shader interactions.
+
+---
+
+I started with organizing my code to free up some space.
+Every scene I set up canvas, renderer, camera, add resizing eventlistener, so it does not really make sense to keep it with the rest of the logic.
+So i've put all these "default" functions into utils.js, with the option to use or not to use OrbitControls and the color of clear canvas:
+![utils screenshot](/shaders-research-blog/images/utils-js.png)
+
+Okay, so to combine real model and particles, first I will write a shader for the model to hide its material on hover.
+I'm going to extend existing material using [custom shader material](https://www.npmjs.com/package/three-custom-shader-material).
+
+as always, first we just check that nothing broke:
+
+![khruschevka-uv](/shaders-research-blog/images/khruschevka-uv.png)
+
+Then I tried to get the starting color and noticed that if I call the initial color from shader, it's just grey....
+
+![grey-uv](/shaders-research-blog/images/grey-uv.png)
+frag sgader:
+```javascript
+varying vec2 vUv;
+
+void main() {
+    //retrievening the original color:
+    vec3 color = csm_DiffuseColor.rgb;
+    //NOT USING THIS FOR NOW:
+    //center:
+    vec2 center = vec2(0.5, 0.5);
+    //distance to center:
+    vec2 distance = (vUv - center);
+    float length = length(distance);
+    //alpha based on distance:
+    csm_DiffuseColor = vec4(color, 1.0);
+}
+
+```
+
+I thought maybe the problem was with not providing the color map, even though it should be baked into model:
+```javascript
+// Material
+const material = new CustomShaderMaterial({
+    //CSM
+    baseMaterial: THREE.MeshStandardMaterial,
+    map: colorTexture, //I've put this both before and after the shaders to compare
+    vertexShader: houseVertexShader,
+    fragmentShader: houseFragmentShader,
+
+    // MeshBasicMaterial properties
+    transparent: true,
+    wireframe: false
+})
+```
+But it did not fix the problem, I spent some time trying to understand what's wrong with the texture or the shader.
+Then I decided to check what my inital material contains and logged the house's mesh. The mesh had property map on it:
+```javascript
+const map = gltf.scene.children[0].material.map
+console.log(map)
+```
+![property map](/shaders-research-blog/images/property-map.png)
+
+So i tried just to reuse **this map** one more time passing **this particular map** into the shader:
+```javascript
+//setting shader material to the house
+gltf.scene.children[0].material = shaderMaterial
+//passing initial map as a uniform into the shader material
+shaderMaterial.uniforms.uMap.value = map
+```
+And it works!
+Let's try to make a hole in our material, static first:
+```javascript
+uniform sampler2D uMap;
+varying vec2 vUv;
+
+void main() {
+    //retrievening the original color:
+    vec4 textureColor = texture2D(uMap, vUv);
+    //center:
+    vec2 center = vec2(0.5, 0.5);
+    //distance to center:
+    vec2 distance = (vUv - center);
+    float alpha = length(distance);
+    alpha = step(0.5, alpha);
+    //alpha based on distance:
+    csm_DiffuseColor = vec4(textureColor.rgb, alpha);
+}
+```
+And now I see another weird thing: it does not have just one hole in the middle, but many little holes as if there are multiple UVs that go from 0 to 1...
+![multiple uvs](/shaders-research-blog/images/many-uvs.png)
+It actually was already visible on previous screenshot with just UV coordinates colors.
+
+So we can not rely on **UV coordinates,** but we can retrieve **global position** from our **vertex shader:**
+```javascript
+varying vec2 vUv;
+varying vec3 vPosition;
+
+void main() {
+  vUv = uv;
+  vPosition = position;
+}
+```
+
+and then we use it frag shader, both **vec2** and **vec3**
+```javascript
+uniform sampler2D uMap;
+
+varying vec2 vUv;
+varying vec3 vPosition;
+
+void main() {
+    //retrievening the original color:
+    vec4 textureColor = texture2D(uMap, vUv);
+    //center:
+    vec2 center = vec2(0.5, 0.0);
+    vec3 centerRaycastExample = vec3(0.25, 0.0, 0.1);
+    //distance to center:
+    vec2 pos = vPosition.xz;
+    // float distance = length(pos - center);
+    float distance = length(vPosition - centerRaycastExample);
+    float alpha = step(1.0, distance);
+    //alpha based on distance:
+    csm_DiffuseColor = vec4(textureColor.rgb, alpha);
+    // csm_DiffuseColor = vec4(vUv, 0.0, 1.0);
+}
+
+```
+And we got this beautiful hole:
+![hole in the house](/shaders-research-blog/images/hole-in-the-house.png)
+
+Here I will stop for this post as it was more about just getting the basic setup, and continue with actual shader from another post!
