@@ -1,0 +1,47 @@
+---
+title: "Flow Field in GLSL – working with shader"
+description: 'Picking up from the setup'
+pubDate: 'Jan 29 2025'
+heroImage: 'hole-in-the-house.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+Continuing from before, now that we hole in the house, let's connect it to the mouse position:
+```javascript
+    const checkIntersects = (object) => {
+    const modelIntersects = raycaster.intersectObject(object)
+    if (modelIntersects.length) {
+        uniforms.uTouchPosition.value = modelIntersects[0].point
+    }
+}
+```
+this is what we get:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/holes-in-the-house.mp4"></video>
+
+But I want this opacity gradient to go **less even** and more ***"eased out"***. For this I'm putting my alpha into power of 3:
+![hole-pow-3](/shaders-research-blog/images/hole-pow-3.png)
+or maybe even 4 ``float distance = pow(length(vPosition - uTouchPosition), 4.0);``:
+![hole-pow-4](/shaders-research-blog/images/hole-pow-4.png)
+
+Now I want particles to be shown where the hole in the house is, so let's pass the position into particles shader.
+But how we gonna use it there? To make particles transparent just like the house would be weird. 
+
+
+Instead, I want to use it for the **flow field strength,** especially that the model looks reall nice when its covered in particles that are not flying away:
+![particles-hole](/shaders-research-blog/images/particles-hole.png)
+
+So what we need to do is go to gpgpu shader and check how close our **base position** is to **touch point**:
+```javascript
+     //flowfieldStrength depending on distance between base and touch position
+     float distance = length(base.xyz - uTouchPosition);
+     
+     //flowFieldStrength between 0 and 7
+     float flowFieldStrength = (1.0 - smoothstep(0.0, 1.0, distance)) * 7.0; 
+
+     //apply flowfield to the particle
+     particle.xyz += flowField * uDeltaTime * strength * flowFieldStrength;
+```
+and finally we're getting beautiful result!
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/flow-field-khruschevka.mp4"></video>
+
+Next step is to tweak uniforms and maybe square of influence of hover effect.

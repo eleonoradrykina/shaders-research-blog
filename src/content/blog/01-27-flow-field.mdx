@@ -122,7 +122,10 @@ And now I see another weird thing: it does not have just one hole in the middle,
 ![multiple uvs](/shaders-research-blog/images/many-uvs.png)
 It actually was already visible on previous screenshot with just UV coordinates colors.
 
+<Takeaway>
 So we can not rely on **UV coordinates,** but we can retrieve **global position** from our **vertex shader:**
+</Takeaway>
+
 ```javascript
 varying vec2 vUv;
 varying vec3 vPosition;
@@ -144,12 +147,12 @@ void main() {
     //retrievening the original color:
     vec4 textureColor = texture2D(uMap, vUv);
     //center:
-    vec2 center = vec2(0.5, 0.0);
-    vec3 centerRaycastExample = vec3(0.25, 0.0, 0.1);
+    vec2 center = vec2(0.5, 0.0); //for 2d point
+    vec3 centerRaycastExample = vec3(0.25, 0.0, 0.1); //for 3d point
     //distance to center:
-    vec2 pos = vPosition.xz;
-    // float distance = length(pos - center);
-    float distance = length(vPosition - centerRaycastExample);
+    //vec2 pos = vPosition.xz; //for 2d point
+    // float distance = length(pos - center); //for 2d point
+    float distance = length(vPosition - centerRaycastExample); //for 3d point
     float alpha = step(1.0, distance);
     //alpha based on distance:
     csm_DiffuseColor = vec4(textureColor.rgb, alpha);
@@ -161,3 +164,4 @@ And we got this beautiful hole:
 ![hole in the house](/shaders-research-blog/images/hole-in-the-house.png)
 
 Here I will stop for this post as it was more about just getting the basic setup, and continue with actual shader from another post!
+![hole with particles](/shaders-research-blog/images/particles-hole.png)
