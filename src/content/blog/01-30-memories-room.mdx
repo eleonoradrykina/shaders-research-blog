@@ -1,0 +1,120 @@
+---
+title: "Memories room"
+description: 'Finishing the memories room'
+pubDate: 'Jan 30 2025'
+heroImage: 'particles-flow-hero.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+Today I am working towards the finish the ***distorted memories*** part of my experience. I am planning to add more to the environment around the house and to make shader more interactive.
+
+#### environment
+At the consult Wouter suggested that I try to use **3d piece of an actual map** as an anvironment around my **[khruschevka](https://en.wikipedia.org/wiki/Khrushchevka)**.
+With Ella's help we downloaded the [Blosm addon](https://github.com/vvoovv/blosm), but the thing is that of course, Russia did not give permission to Google to scan buildings in 3d.
+"You never know what these Google spies are up to" I thought, and checked Russian maps sources, but you can not get scans out of there.
+
+Then I thought okay, the post-soviet urban areas are not so exclusive and they don't solely exist in Russia, but then I found out that post-soviet european countries have very little city center scanned in 3d or no scans at all:
+![flat map](/shaders-research-blog/images/flat-map-scan.jpg)
+So it's quite impossible to find the scanned part that fits the looks.
+
+If I use the flat mesh it does not look nice at all, so I will just add some planes to the scene to anchor it in the space.
+
+As I'm doing this in vanilla js and I'm trying to keep main script readable, I created module environment js just to create the group and then add it in the main script:
+```javascript
+/**
+ * Scene's environment
+ */
+const environmentGroup = environment()
+scene.add(environmentGroup)
+```
+
+After trying several asphalt maps and several setups, I had a crisis and Ella suggested to extrude my flat map of actual Russian neighbourhood.
+![house-setup](/shaders-research-blog/images/house-setup.png)
+
+meanwhile, I will work on flow field shader
+
+#### gpgpu shader
+So as we are using a texture as a buffer between our "compute" shader and actual shader, we have **n pixels** in it, where we store data about our vertices positions.
+We got ***n*** by taking a square root of our geometry attributes array size and ceiling the number. So unless we our array size is a perfect power of 2, we have some extra space.
+
+Let's console our array and our texture size:
+![console array size](/shaders-research-blog/images/console-array-size.png)
+
+Our **array count equals 460043** , and our **texture size is 679**.
+
+We can count the amount of pixels in our computing texture:
+679 x 679 = 461041
+
+it means that we have **998 pixels left** to store the data!
+
+<Takeaway>
+We don't even need that much. Instead, I want to save previous **touch position** and previous **FlowFieldInfluence.** Then, in my gpgpu shader I will calculate the distance between current touch point and previous touch point.
+So if the user moves mouse faster, the distance will be bigger. Then, I will take that into account when calculating new FlowFieldInfluence and lerp between previous and current values.
+</Takeaway>
+
+Okay, so first I thought I will store my **touch point from Raycaster** in the texture as well, but then I realised as we are changing it **within javascript**, we need to use **uniform** for that:
+```javascript
+/**
+ * Raycasting
+ */
+const raycaster = new THREE.Raycaster()
+
+const checkIntersects = (object) => {
+    const modelIntersects = raycaster.intersectObject(object)
+    if (modelIntersects.length) {
+        // Store current position as previous before updating current
+        gpgpu.particlesVariable.material.uniforms.uPreviousTouchPosition.value.copy(
+            gpgpu.particlesVariable.material.uniforms.uTouchPosition.value
+        )
+
+        // Update current touch position
+        uniforms.uTouchPosition.value = modelIntersects[0].point
+        gpgpu.particlesVariable.material.uniforms.uTouchPosition.value = modelIntersects[0].point
+    }
+}
+```
+
+then we can get distance between them in gpgpu shader:
+```javascript
+    // Calculate movement speed based on distance between current and previous touch positions
+    float touchMovementDistance = length(uTouchPosition - uPreviousTouchPosition);
+    float speedFactor = clamp(touchMovementDistance * 4.0, 0.0, 1.0); // still tweaking sensitivity factor
+    float dynamicInfluence = (speedFactor - 0.5) * (-2.0); 
+```
+now, if we base our flowField influence only on that, it will jump every frame in a weird way.
+
+What we could instead is to save flowField influence as a part of a texture of gpgpu shader:
+```javascript
+// Store values in the last pixel
+const lastPixelIndex = (baseGeometry.count) * 4
+//flowFieldInfluence 0.0
+baseParticlesTexture.image.data[lastPixelIndex + 0] = 0.0 //start with 0.0
+```
+
+And then we retrieve our initial flowfield inside of the shader:
+```javascript
+    // Get the initial flow field influence from the last pixel
+    vec4 lastPixel = texture(uParticles, vec2(1.0));
+    float initialInfluence = lastPixel.x;
+```
+and then instead of using dynamicInfluence directly, we lerp between initial influence and target influence:
+
+```javascript
+    targetInfluence = smoothstep(dynamicInfluence, 1.0, targetInfluence);
+    float flowFieldInfluence = mix(initialInfluence, targetInfluence, 0.5);
+```
+and then we need to save this influence for the next frame:
+
+```javascript
+        //are we in the last pixel?
+        if (gl_FragCoord.x >= resolution.x - 1.0 && gl_FragCoord.y >= resolution.y - 1.0) {
+            gl_FragColor = vec4(flowFieldInfluence, 0.0, 0.0, 0.0);
+            return;
+        }
+```
+And with this we have this smooth result of flowField influence depending on a the mouse velocity:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/flow-field-khruschevka-2.mp4"></video>
+
+
+this might be too sensitive, also now when we don't move mouse and the position is 0 nothing hapens. I want the time to accumulate the intensity of flow field as well.
+Also here you can see some experimenting with the setup instead of the map scene, at the end it got a bit of Lynch vibes...
