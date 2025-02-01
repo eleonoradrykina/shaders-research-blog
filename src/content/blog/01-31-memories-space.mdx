@@ -1,0 +1,156 @@
+---
+title: "Memories space"
+description: 'Finishing the memories room'
+pubDate: 'Jan 31 2025'
+heroImage: 'memories-hero.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+First things first, I've deployed current versions of corridor and memories spaces:
+
+--> https://corridor-iota.vercel.app/
+
+--> https://memories-jet-xi.vercel.app/
+
+#### Optimization experiments
+After yesterday's consult I've been thinking about the GPGPU setup where we use a model's geometry to position our particles.
+As its a particle per vertex, we need many subdivisions for the final result to look nice.
+
+But do we really need to load the whole heavy model every time, or do *we need only **geometry** and **vertex color** atributes?*...
+
+I'm not going to try to generate more positions based on given vertexes, but I want to try to extract only these attributes and see what happens.
+![google search](/shaders-research-blog/images/google-attributes.png)
+
+Apparently it's not something you can do in Blender by default.
+So I've created a separate demo with kinda the same minimal setup and uploaded my model.
+I've changed the geometry just like I use it in my main project:
+```javascript
+/**
+ * Base Geometry
+ */
+
+const baseGeometry = {}
+console.log(gltf.scene.children[0])
+
+baseGeometry.instance = gltf.scene.children[0].geometry
+//set the scale
+baseGeometry.instance.scale(0.25, 0.25, 0.25)
+//rotate
+baseGeometry.instance.rotateX(Math.PI / 2)
+
+//console.log instance attributes
+console.log(baseGeometry.instance.attributes)
+```
+From this we will only use position attribute and color_1 (this the one that contains vector color data).
+I don't really need anything else, right?
+
+So what if I just export these particular attributes in some form and use only them?
+```javascript
+//Reduce precision to 3 decimal places
+const positions = baseGeometry.instance.attributes.position.array;
+const positionsText = Array.from(positions).map(n => n.toFixed(3)).join('\n');
+
+// Export position data as text file
+const blob = new Blob([positionsText], { type: 'text/plain' });
+const url = URL.createObjectURL(blob);
+const link = document.createElement('a');
+link.href = url;
+link.download = 'positions.txt';
+link.click();
+URL.revokeObjectURL(url);
+```
+and this is what I get:
+
+![txt screenshot](/shaders-research-blog/images/txt-screenshot.png)
+
+I tried different options for colors and positions attributes:
+
+***Positions Atribute array***
+| Format  | Size |
+| -------- | ------- |
+| .json | 44.4 mb |
+| .txt   | 27 mb |
+| .txt - 3 decimal precision| 9 mb |
+| .txt - 2 decimal precision | 7.6 mb |
+| .bin | 5.5mb |
+
+***Colors Atribute array***
+| Format  | Size |
+| -------- | ------- |
+| .json | 34.2 mb |
+| .txt - 2 decimal precision | 6.9 mb |
+| .bin | 5.5 mb |
+
+It's also too big to expect that Vite will compress it while building unless I break it up into chunks...
+
+And then I compressed the .glb of the house using DRACO compression, keeping the big amount of vertices that I need, and it went down **from 43.7mb to 1.2mb**, and result looks exactly the same...
+
+Well, that was an interesting little experiment, let's get back to our shader.
+
+#### Adding time of standby to the shader
+
+So, yesterday I stopped at adding strength to the flowFieldInfluence together with the speed of the cursor.
+Now when the cursor does not move at all, nothing really happens. I want to change that.
+
+<Takeaway>
+I also already added **time of standby** value already to my gpgpu texture. This value grows when the distance between previous touch point and current touch point is less than 0.01, meaning we have not moved our cursor.
+I use this value as dynamic factor in my flowFieldInfluence value, just like speed factor. 
+</Takeaway>
+
+so here I retrieve the value from the texture:
+```javascript
+     // Get the data from the last pixel
+    vec4 lastPixel = texture(uParticles, vec2(1.0));
+    //Get the initial flow field influence
+    float initialInfluence = lastPixel.x;
+    //get the time of standby
+    float timeStandby = lastPixel.y;
+```
+
+then I would count my "base" random flowfield influence and add speed factor from cursor:
+```javascript
+    //strength with speed influence
+    float baseInfluence = simplexNoise4d(vec4(base.xyz * 0.2, time + 1.0));
+    //desired uFlowFieldInfluence is between 0.75 and 1
+    float dynamicInfluence = (speedFactor - 0.5) * (-2.0); //-0.2 to -1
+```
+
+and then here is where I got lost yesterday, as you can't console.log values it's extremely hard to remember which approx constraints every factor has. 
+This is why I have so many comments and sometimes leave something like ``//-0.2 to -1`` to help myself with approximate calculations.
+
+So my problem was that I was clamping dynamicInfluence between 0.0 and 1.0, so it did not really do anything. Instead, it should be negative and have a bit higher amplitude:
+```javascript
+        // if we're in standby, use time of standby instead of speedFactor
+        if (touchMovementDistance < 0.01) {
+            dynamicInfluence = -timeStandby;
+            //clamp dynamicInfluence between -5.0 and 0.0
+            dynamicInfluence = clamp(dynamicInfluence, -5.0, 0.0);
+            timeStandby += uDeltaTime*0.1;
+        }  else {
+            timeStandby = 0.0;  // Reset the timer when there's movement
+        }
+
+        float targetInfluence = smoothstep(dynamicInfluence, 1.0, baseInfluence);
+
+        // Gradually interpolate between initial and target influence
+        float flowFieldInfluence = mix(initialInfluence, targetInfluence, 0.5);
+```
+
+And now it works!
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/gpgpu-final.mp4"></video>
+
+
+I also experimented with standby time sensitivity tweaking multiplier `` timeStandby += uDeltaTime*0.1;``.
+And now we have not just an interactive shader, but an interactive "compute" shader, cool!
+
+#### Little extra
+
+Another thing i tried today was finally creating my own .hdr environment map from a 360 HDR photo taken on Insta 360 camera.
+I should've tried it earlier, but I always pushed it back. Using Insta360 Studio and certain Photoshop settings, I managed to export my 360 in a correct format and add it to my scene:
+
+![env map](/shaders-research-blog/images/env-map.png)
+
+It looks a bit weird on this screenshot, but it actually works and you don't even see any seams from the tripod where the picture was taken!
+As I took this 360 picture at my friend's room which was quite small, it looks weird. If I widen my camera angle with bigger camera's Field Of View, I can see more of the environment.
+
+I think it might have a potential so I will try to use this with an outside photo.
