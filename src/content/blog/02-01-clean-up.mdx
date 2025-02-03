@@ -1,0 +1,38 @@
+---
+title: "Clean up"
+description: 'No more coats and no more home'
+pubDate: 'Feb 01 2025'
+heroImage: 'memories-hero.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+#### Clean up and final tweaks
+So I am happy with my flow field shader logic, so I am taking out tweaks and debugging parts. 
+When I started working on this, I limited flow field direction to only go down to create "decaying" image, but at the end my house is standing on the ground so you can't see all these beautiful swirls really.
+I tweaked the frequency to make this beautifil swirls as long as possible, but also to keep them "swirly" enough. 
+Here how it looks with final particles size and frequency:
+![final-frequency](/shaders-research-blog/images/final-frequency.png)
+
+#### No more coats and no more home
+At the end my khrushchevka is floating in "memories" space, surrounded by ghosts of many others khrushchevkas, just like real-life built-up neighborhoods.
+I wanted to create a very clear feeling of absence: you see this familiar "token" of your old life as it ceases to exist. You know that of course it is still standing somewhere, but this space is no longer actually real for you.
+
+Many years ago I saw this painting by Christopher Wool:
+
+![christopher wool](/shaders-research-blog/images/wool.webp)
+
+These words resonated with me, they got stuck in my head forever. I immediately thought about the context from which these words were taken, I think I googled it right at Pompidou Centre where I saw it for the first time. 
+Wool took this quote from "The Revolution of Everyday Life" by Belgian writer Raoul Vaneigem, who in his turn quoted Russian philosopher Vasily Rozanov. Vasily Rozanov in his "The Apocalypse of Our Time", 1918, was trying to explain the essense of nihilism during revolution period in Russia. 
+
+*"
+For nihilism is a European not an American invention. Gagosian’s title comes from Vasily Rozanov’s essay “The Apocalypse of Our Time”, written just before the philosopher starved to death in 1919. “With a clang, a creak and a scream the iron curtain drops on Russian history,” Rozanov predicted. “The show is over. The audience get up to leave their seats. Time to collect their coats and go home. They turn round. No more coats and no more home.”
+"* – from [Financial Times article](https://www.ft.com/content/a594f7d2-3022-11e3-9eec-00144feab7de)
+
+
+I feel that it also fits with the current situation, and while of course it is just a metaphor, I think it is also a very accurate depiction of the impotency of the Russian crowd.
+
+![no more coats ](/shaders-research-blog/images/no-more-coats.png)
+
+I think because at least half of the string of text is nearly always is closed by house material, sometimes it disappears because it's occluded by the house. For now I disabled **depthWrite** on the house material and **depthTest** on the string material. I also will tweak the layout and the font later.
+
+I also started working on "impossible" geometry for my corridor, but it's going to be another post.
