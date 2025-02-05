@@ -1,0 +1,203 @@
+---
+title: "Curtains js"
+description: 'Using library for WebGPU set uo'
+pubDate: 'Feb 04 2025'
+heroImage: 'curtains-demo.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+Today I am following this [Okay Dev article](https://okaydev.co/articles/dive-into-webgpu-part-1). The author, Martin
+Laxenaire also created javascript library for turning html elements into WebGLcanvases, [curtains js](https://www.curtainsjs.com/). And with WebGPU release he refactored his code to be able to work with WebGPU – [gpu curtains](https://github.com/martinlaxenaire/gpu-curtains).
+I am particularly interested in this because one of the trickiest part with WebGPU is the setup, and I at least want to see this approach to understand it from another perspective.
+
+He also works a lot with GSAP, and together with GSAP he uses another library for called [Lenis](https://lenis.darkroom.engineering/). Lenis is a library for smoothing scrolling, which I have never heard of before! 
+I have used smooth scroll by GSAP, it was quite limited for phones, but quite cool on desktop. I am not sure if Lenis is more performant (they seem to state so) and if they have solved the issue with touch devices, but I am glad to try something new and at least is free! Unlike smoothscrolling in GSAP.
+
+I followed through the first demo, introducing curtians js setup using **Demo.js, DemoScene.js and IntroScene.js classes,** and thought to myself that I should use **object-oriented** programming much more...
+![curtains-demo](/shaders-research-blog/images/curtains-demo.png)
+ I also scrolled through 2nd and 3rd demo, but the most interesting is compute shaders one, the 4th one "for particles lovers" – that's me!
+ I'm also lucky beacuse it's been published just today =)
+
+Following the Martin's article, the first nice example:
+Unlike the example from WebGPU fundamentals example, this shader positions points in 3d, uses *billboarding* method, and uses normals for further lighting in frag shader:
+```javascript
+  @vertex fn main(
+    attributes: Attributes,
+  ) -> VSOutput {    
+    var vsOutput : VSOutput;
+    
+    let instanceIndex: f32 = f32(attributes.instanceIndex);
+    const PI: f32 = 3.14159265359;
+    
+    var position: vec3f;
+    
+    // random radius in the [0, params.radius] range
+    let radius: f32 = rand11(cos(instanceIndex)) * params.radius;
+    
+    let phi: f32 = (rand11(sin(instanceIndex)) - 0.5) * PI;
+    
+    let theta: f32 = rand11(sin(cos(instanceIndex) * PI)) * PI * 2;
+
+    position.x = radius * cos(theta) * cos(phi);
+    position.y = radius * sin(phi);
+    position.z = radius * sin(theta) * cos(phi);
+    
+    // billboarding
+    var mvPosition: vec4f = matrices.modelView * vec4(position, 1.0);
+    mvPosition += vec4(attributes.position, 0.0);
+    vsOutput.position = camera.projection * mvPosition;
+    
+    vsOutput.uv = attributes.uv;
+    
+    // normals in view space to follow billboarding
+    vsOutput.normal = getViewNormal(attributes.normal);
+    
+    return vsOutput;
+  }
+```
+
+One more important thing that I might have missed while describing difference between WebGL and WebGPU when it comes to compute shaders:
+I've always compared compute shaders with using ping-ponging textures in GLSL, but compute shaders is not **just replacement for this**.
+
+The cool thing is that you also get control on **computing threads**, meaning that you determine how much calculations are running **in parallel**. 
+This was one of the concepts I've mentioned as confusing when starting working with compute shaders. I'm just mentioning it here again to keep in mind for my presentation as well.
+
+
+Okay, so for the compute shaders with our particles here, at first we change the positioning from vertex to compute shader:
+```javascript
+
+  // https://gist.github.com/munrocket/236ed5ba7e409b8bdf1ff6eca5dcdc39
+  // On generating random numbers, with help of y= [(a+x)sin(bx)] mod 1", W.J.J. Rey, 22nd European Meeting of Statisticians 1998
+  fn rand11(n: f32) -> f32 { return fract(sin(n) * 43758.5453123); }
+  
+  fn getInitLife(index: f32) -> f32 {
+    return round(rand11(cos(index)) * params.maxLife * 0.95) + params.maxLife * 0.05;
+  }
+  
+  const PI: f32 = 3.14159265359;
+  
+  // set initial positions and data
+  @compute @workgroup_size(256) fn setInitData(
+    @builtin(global_invocation_id) GlobalInvocationID: vec3<u32>
+  ) {
+    let index = GlobalInvocationID.x;
+    
+    if(index < arrayLength(&particles)) {
+      let fIndex: f32 = f32(index);
+      
+      // calculate a random particle init life, in number of frames
+      var initLife: f32 = getInitLife(fIndex);
+      
+      initParticles[index].position.w = initLife;
+      particles[index].position.w = initLife;
+      
+      // now the positions
+      // calculate an initial random position inside a sphere of a defined radius
+      var position: vec3f;
+      
+      // random radius in the [0.5 * params.radius, params.radius] range
+      let radius: f32 = (0.5 + rand11(cos(fIndex)) * 0.5) * params.radius;
+      let phi: f32 = (rand11(sin(fIndex)) - 0.5) * PI;
+      let theta: f32 = rand11(sin(cos(fIndex) * PI)) * PI * 2;
+
+      position.x = radius * cos(theta) * cos(phi);
+      position.y = radius * sin(phi);
+      position.z = radius * sin(theta) * cos(phi);
+
+      // initial velocity
+      var velocity: vec3f = vec3(0.0);
+      particles[index].velocity = vec4(velocity, initLife);
+            
+      // write positions
+      particles[index].position.x = position.x;
+      particles[index].position.y = position.y;
+      particles[index].position.z = position.z;
+
+      initParticles[index].position.x = position.x;
+      initParticles[index].position.y = position.y;
+      initParticles[index].position.z = position.z;
+    }
+  }
+
+```
+
+then we pass particlesPosition into our vertex shader:
+```javascript
+  createParticles() {
+    const geometry = new PlaneGeometry({
+      instancesCount: this.nbInstances,
+      vertexBuffers: [
+        {
+          // use instancing
+          stepMode: 'instance',
+          name: 'instanceAttributes',
+          buffer: this.updateComputeBuffer.buffer, // pass the compute buffer right away
+          attributes: [
+            {
+              name: 'particlePosition',
+              type: 'vec4f',
+              bufferFormat: 'float32x4',
+              size: 4,
+            },
+            {
+              name: 'particleVelocity',
+              type: 'vec4f',
+              bufferFormat: 'float32x4',
+              size: 4,
+            },
+          ],
+        },
+      ],
+    })
+    ...
+    }
+```
+and retrieve this attribute in our vertex shader instead of calculating positions there:
+```javascript
+ @vertex fn main(
+    attributes: Attributes,
+  ) -> VSOutput {    
+    var vsOutput : VSOutput;
+    
+    // billboarding
+    var mvPosition: vec4f = matrices.modelView * vec4(attributes.particlePosition.xyz, 1.0);
+    mvPosition += vec4(attributes.position, 0.0);
+    vsOutput.position = camera.projection * mvPosition;
+    
+    vsOutput.uv = attributes.uv;
+    
+    // normals in view space to follow billboarding
+    vsOutput.normal = getViewNormal(attributes.normal);
+    
+    return vsOutput;
+  }
+```
+
+And we still get the sphere:
+![curtains-demo](/shaders-research-blog/images/curtains-sphere-1.png)
+
+As we initiate compute shader, we pass our compute shader, bindGroups, dispatchSize which will determine how many calcualtions will be executed in parallel. Heere's another nice explanation about workthreads:
+
+<Takeaway>
+The dispatchSize is equal to our number of instances divided by **256** since this is the workgroup size we’ve set in our shader (this is also the maximum allowed for the X and Y dimensions). 
+This means the compute shader will run a little less than **400 times (100,000 / 256) on 256 threads** simultaneously. 
+This is much, much faster than our previous vertex shader example!
+</Takeaway>
+
+After including curl noise inside of our compute shader, we can use it for the velocity:
+```javascript
+      var vVel: vec3f = particles[index].velocity.xyz; //retrieving initial velocity
+
+      vVel += curlNoise(vPos * 0.02, 0.0, 0.05);
+      vVel *= 0.4;
+```
+Then we also added fragment shader for mixing colors based on it's position to give it more volume.
+And we get noisy particles "sphere":
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/wgsl-okay-dev.mp4"></video>
+
+Then following the article we also add shadow mapping on particles and the box around it:
+
+![curtains-demo](/shaders-research-blog/images/curtains-sphere-2.png)
+
+I will not include snippets from shadow mapping here otherwise it would be too long and so far I am not sure how I will use it in my project.
+This is something that I will try to do next time!
