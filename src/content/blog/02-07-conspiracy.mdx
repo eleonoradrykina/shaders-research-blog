@@ -1,0 +1,99 @@
+---
+title: "Working on Conspiracy Theory"
+description: 'Using library for WebGPU set up'
+pubDate: 'Feb 07 2025'
+heroImage: 'wgsl-curtains-hero.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+Today I am working on connecting the example from Okay Dev article and my compute shader.
+I am using the same structure as in the article, exporting classes per scene.
+
+First important tweak is that I am pretty sure that it looks different on my laptop. It happens beacuse it runs all calculations per frame and not per delta time.
+
+So what I did is introduced uniform delta time:
+```javascript
+    onRender() {
+        const currentTime = performance.now() / 1000
+
+        this.timeDelta.current = currentTime - this.timeLast.current
+        this.timeLast.current = currentTime
+
+        this.mouse.lerped.lerp(this.mouse.current, 0.5)
+    }
+```
+and passed it to the compute shader too:
+```javascript
+ this.computeBindGroup = new BindGroup(this.renderer, {
+            label: 'Compute instances bind group',
+            bindings: [this.initComputeBuffer, this.updateComputeBuffer],
+            uniforms: {
+                params: {
+                    visibility: ['compute'],
+                    struct: {
+                        radius: {
+                            type: 'f32',
+                            value: this.radius,
+                        },
+                        maxLife: {
+                            type: 'f32',
+                            value: 100.0,
+                        },
+                        deltaTime: {
+                            type: 'f32',
+                            value: this.timeDelta.current,
+                        },
+                        mouse: {
+                            type: 'vec2f',
+                            value: this.mouse.lerped,
+                        },
+                    },
+                },
+            },
+ })
+```
+
+I thought it will follow the same logic as the following mouse logic, but it behaved weirdly. It got stuck on the first frame or was unpredictably different:
+![curtains-demo](/shaders-research-blog/images/curtains-deltaTime.png)
+
+After some debugging I realized that deltaTime is not being updated correctly in uniform buffer, and my compute shader does not actually use it correctly.
+
+As I mentoined before, the big issue nearly all of the time is to understand actual set up before even diving into the shaders, and while I hoped that curtains library can help me with that, it's again a new logic to get used to.
+I am extremely not sure about this, but the only way I made it work is to explixitly update the uniforms of the bind group of compute shader with this:
+
+```javascript
+    onRender() {
+        const currentTime = performance.now() / 1000
+
+        this.timeDelta.current = currentTime - this.timeLast.current
+        this.timeLast.current = currentTime
+
+        //updating compute shader bind group
+        this.computeBindGroup.bindings[2].inputs.deltaTime._value = this.timeDelta.current
+
+        this.mouse.lerped.lerp(this.mouse.current, 0.5)
+    }
+```
+
+And now it works!
+I've played with the speed and the frequency, and then I thought – how far can I go with the performance without changing much?
+
+<Takeaway>
+Unlike ping-ponging example, I am not loading any **model** or **positioning** logic on cpu, so why not crack up the number maybe to **1 million** particles? or maybe even 2?
+At number of *1 million* it looks extremely smooth which is nice.
+</Takeaway>
+I did not look for solutions like ``<Perf/>`` and simply logged my deltaTime which is supposed to be time per frame.
+Of course, consoling itself is extremely not performant, but here you can see that the framerate is very okay, being around **100 frames per second** most of the time:
+![curtains-demo](/shaders-research-blog/images/framerate.png)
+
+Particles also start look like a fluid or a cloth at this number, very soothing effect and I literally caught myself just staring at them several times=)
+
+For next step I added a bit more interactivity not only to position, but to the color in frag shader:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/million-particles-frag.mp4"></video>
+
+And then also to the compute shader for the frequency. Now I use both **absolute** and **normalised** mouse positions: absolute to position the center of particle system, and normalised to let it influence the movement of the particles.
+
+My idea is to create a simple scene with a couple of common conspiracy theories, and then particle systems will work as a representation of these common thoughts bouncing between them while being transformed a little bit:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/conspiracy.mp4"></video>
+
+I will add more content and deploy it tomorrow.
