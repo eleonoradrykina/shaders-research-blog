@@ -1,0 +1,106 @@
+---
+title: "Impossible geometry"
+description: 'Harry-Pottering the walls in my backrooms'
+pubDate: 'Feb 08 2025'
+heroImage: 'states.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+#### Geometry
+Let's get back to my backrooms!
+So the goal is to create a feeling of impossible geometry there.
+I decided to stick to the shape of the square for my *bounding box* and move walls while user doesn't see it, making user go in circles (hopefully) without realising it.
+
+First, I sketched out possible layout and places where I would change the setup:
+
+
+Then, I really thought through what layout should always be there and what should be rendered conditionally to **avoid extra re-renders**:
+
+Then I have built **this setup** in react, and I will put my **"moving" walls** in the **separate component**, because these walls don't have to re-render.
+![impossible-geometry](/shaders-research-blog/images/geometry-initial.png)
+
+I am putting my ``<MovingWalls />`` on the same level with the ``<Player/>`` and ``<Corridor/>``, and I will use an updated state of the position from ``<Player/>`` to show or hide some of the walls:
+```javascript
+        <Physics debug={ false }>
+            <Lights />
+            <Corridor />
+            <MovingWalls />
+            <Player  /> 
+        </Physics>
+```
+This is how my room looks with all the MovingWalls up:
+![impossible-geometry](/shaders-research-blog/images/geometry-moving-walls.png)
+
+But of course, we don't need all of them all the time.
+This is where my sketch comes in handy, so it's easy for me to set conditions:
+```javascript
+export default function MovingWalls({ gameState })
+{
+    return <>
+         {/*GOING  FROM LEFT TO RIGHT, FROM Z=0 FURTHER AWAY*/}
+        {gameState === 'A' && <WallVertical position={[-4.85, 0.75, 0.55]} length={2.56} />}
+        {gameState !== 'B' && <WallVertical position={[1.65, 0.75, -3.0]} length={9.7} />}
+
+        {gameState === 'D' && <WallHorizontal position={[-12.9, 0.75, -8]} length={5.5} />} 
+        {gameState === 'C' && <WallHorizontal position={[-7.425, 0.75, -8]} length={4.85} />} 
+        {(gameState === 'B' || gameState === 'C'  ) && <WallHorizontal position={[-1.6, 0.75, -8]} length={6.2} />} 
+        {gameState === 'C' && <WallHorizontal position={[13.1, 0.75, -8]} length={5.2} />} 
+
+        {gameState !== 'C' && <WallVertical position={[-4.85, 0.75, -10.95]} length={5.8} />}
+
+        {gameState === 'C' && <WallHorizontal position={[-10.35, 0.75, -14]} length={10.7} />}
+        {gameState !== 'C' && <WallHorizontal position={[13.35, 0.75, -14]} length={4.7} />}
+    </>
+}
+```
+Now I can check that my states are the same as my sketch:
+![impossible-geometry](/shaders-research-blog/images/states.png)
+
+After finetuning areas of switching the states, this is what I have if I put my game in a debug mode:
+<video controls muted autopolay loop width="800" src="/shaders-research-blog/images/moving-walls-gameplay.mp4"></video>
+
+Here you can see states **A -> B -> C -> D -> A -> B**, meaning you can go on forever in circles....
+
+![impossible-geometry](/shaders-research-blog/images/3SIy.gif)
+
+...kinda like in Harry Potter!
+
+#### Links
+Okay cool. Another thing I want to add is links for my rooms / websites / demos of different shading languages.
+I want to place planes in my experience and check if the player is there, then we activate the link.
+
+Here I place the spot for the link:
+![impossible-geometry](/shaders-research-blog/images/link-spot.png)
+
+And then we keep track of our position and activate eventListener based on the position:
+```javascript
+    const [isInLinkMemoriesSpot, setIsInLinkMemoriesSpot] = useState(false)
+    
+    const visitLinkMemories = () => {
+        window.open('https://memories-jet-xi.vercel.app/', '_blank')
+    }
+
+    const checkLinkSpot = (position) => {
+        //link spot is at x -7.2, z -4.0
+        const inMemoriesSpot = position.x > -7.4 && position.x < -7.0 && 
+                      position.z > -4.2 && position.z < -3.8
+        
+        setIsInLinkMemoriesSpot(inMemoriesSpot)
+    }
+
+    useEffect(() => {
+        const handleKeyPress = (event) => {
+            if (event.key === 'Enter' && isInLinkMemoriesSpot) {
+                visitLinkMemories()
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyPress)
+        return () => {
+            window.removeEventListener('keydown', handleKeyPress)
+        }
+    }, [isInLinkMemoriesSpot])
+
+```
+
+and it works! I will make the spot look better, add some ui and hide debugging elements and corridor is finally ready=)
