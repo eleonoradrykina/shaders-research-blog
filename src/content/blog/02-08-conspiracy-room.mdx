@@ -1,0 +1,72 @@
+---
+title: "Loading model in WebGPU"
+description: 'What a nice Saturday to learn what anisotropic means'
+pubDate: 'Feb 08 2025'
+heroImage: 'curtains-gltf-final.png'
+---
+import Takeaway from "../../components/Takeaway.astro";
+
+To make it more like a kitchen or a dining table, I want to add a table to my conspiracy theory digital "room".
+First, we add the gltf:
+```
+    async loadGLTF() {
+        this.gltfLoader = new GLTFLoader()
+        this.gltf = await this.gltfLoader.loadFromUrl('./table.glb')
+
+        this.gltfScenesManager = new GLTFScenesManager({
+            renderer: this.renderer,
+            gltf: this.gltf,
+        })
+    }
+```
+But  now  my table is added with UV map as a texture:
+![curtains-gltf](/shaders-research-blog/images/curtains-gltf-uv.png)
+
+ If I log my gltf.material, it shows the correct material of my table.
+However, it doesn't use it.
+To get our material back, we need to call buildShaders:
+
+```
+        const material = this.gltf.materials[0]
+
+        this.gltfMeshes = this.gltfScenesManager.addMeshes((meshDescriptor) => {
+            const { parameters } = meshDescriptor
+
+            parameters.shaders = buildShaders(meshDescriptor)
+        })
+```
+
+And then there it is:
+![curtains-gltf](/shaders-research-blog/images/curtains-gltf-material.png)
+
+Let's add a room around it. The example already had a box around logic, but I turned it into an actual room.
+I could have just build planes as walls and separate planes for the ceiling and the floor, but because I'm working with shaders, I decided to check which plane is **wall** or **floor** which directly inside of the shader **using normals.**
+I wrote a simple wallpaper shader for the wallpapers and here I use it only for the walls:
+
+```javascript
+    // Check if surface is a wall using normal
+    let isWall = abs(fsInput.normal.y) < 0.5; // true for walls (where y component is close to 0)
+    let isCeiling = (fsInput.normal.y) > 0.9; // true for ceiling (where y component is close to 1 and is positive)
+    
+    // Apply wallpaper only to walls
+    var wallpaper: vec3f;
+    if (isWall) {
+        wallpaper = applyWallpaper(shading.color, fsInput.uv);
+    } else if (isCeiling) {
+        wallpaper = vec3f(254.0 / 256.0, 253.0 / 256.0, 238.0 / 256.0); // ceiling color
+    } else {
+        var floorColor: vec3f = vec3f(55.0 / 256.0, 23.0 / 256.0, 4.0 / 256.0); // floor color
+        //add a bit of shadow in the center
+        let center = vec2f(0.5, 0.15);
+        let distance = length(fsInput.uv - center);
+        let shadow = 1.0 - smoothstep(0.15, 0.2, distance);
+        wallpaper = mix(floorColor, vec3f(36.0 / 256.0, 14.0 / 256.0, 1.0 / 256.0), shadow);
+    }
+```
+
+Then I added 3 most common conspiracy theories and this is how it looks:
+![curtains-gltf](/shaders-research-blog/images/curtains-gltf-final.png)
+
+You're all set to choose your favorite fighter at the table discussion!
+
+*I missed some logging earlier, so I will break today into 2 separate posts and pick up from where I left with my impossible geometry.*
