@@ -12,9 +12,10 @@ So the goal is to create a feeling of impossible geometry there.
 I decided to stick to the shape of the square for my *bounding box* and move walls while user doesn't see it, making user go in circles (hopefully) without realising it.
 
 First, I sketched out possible layout and places where I would change the setup:
-
+![impossible-geometry](/shaders-research-blog/images/moving-walls-sketch-1.png)
 
 Then, I really thought through what layout should always be there and what should be rendered conditionally to **avoid extra re-renders**:
+![impossible-geometry](/shaders-research-blog/images/moving-walls-sketch-2.png)
 
 Then I have built **this setup** in react, and I will put my **"moving" walls** in the **separate component**, because these walls don't have to re-render.
 ![impossible-geometry](/shaders-research-blog/images/geometry-initial.png)
@@ -75,7 +76,7 @@ Here I place the spot for the link:
 And then we keep track of our position and activate eventListener based on the position:
 ```javascript
     const [isInLinkMemoriesSpot, setIsInLinkMemoriesSpot] = useState(false)
-    
+
     const visitLinkMemories = () => {
         window.open('https://memories-jet-xi.vercel.app/', '_blank')
     }
